@@ -55,14 +55,12 @@
 :for w from=1 to=$wan do={
   :if ($pingprobefaillast->($w-1)=1 && $pingprobefail->($w-1)=0) do={
     :log info ("Wan$w Up")
-    :set wstatuslist ("$wstatuslist".","."down")
 #start edit action wan   
   
 #end  edit action wan 
   }
   :if ($pingprobefaillast->($w-1)=($pingintervalprobe-1) && $pingprobefail->($w-1)=$pingintervalprobe) do={
     :log info ("Wan$w Down")
-    
 #start edit action wan   
   
 #end  edit action wan     
