@@ -24,41 +24,45 @@
 
 :if ($pingprobefail->0=nil) do={ :set pingprobefail {0;0;0;0;};}
 :for w from=1 to=$wan do={
-  :if ([/interface get value-name=running [find name=($intcheck->$w)]] = true) do={
-    :do {
-       :put ($ipcheck->$w)
-       :set pingresult [/ping  ($ipcheck->$w) count=$pingcount interface=($intcheck->$w) routing-table=($rcheck->w) ]
-    } on-error={
-       :log info "ping fail (check wan$w)"
-       :set pingresult 0
-    }
-  } else={
-    :set pingresult 0
-  }
+  	:if ([/interface get value-name=running [find name=($intcheck->$w)]] = true) do={
+    	:do {
+       		:put ($ipcheck->$w)
+       		:set pingresult [/ping  ($ipcheck->$w) count=$pingcount interface=($intcheck->$w) routing-table=($rcheck->w) ]
+    	} on-error={
+       		:log info "Failure to ping wan$w"
+       		:set pingresult 0
+    	}
+  	} else={
+	  	:log info "Interface wan$w is not running"
+	  	:set ($pingprobefail->($w-1)) $pingintervalprobe
+	    :set pingresult 0
+  	}
   
-  :if ($pingresult >= $pingok) do={
-    :if ($pingprobefail->($w-1)>0) do={
-      :set ($pingprobefail->($w-1)) ($pingprobefail->($w-1)-1)
-    }
-    
-
-  } else={ 
-    :if ($pingprobefail->($w-1)<pingintervalprobe) do={
-      :set ($pingprobefail->($w-1)) ($pingprobefail->($w-1)+1)
-    }
-  }
+	:if ($pingresult >= $pingok) do={
+		:if ($pingprobefail->($w-1)>0) do={
+	    	:set ($pingprobefail->($w-1)) ($pingprobefail->($w-1)-1)
+	    	:log info ("Wan$w Unstable (".($pingprobefail->($w-1))."/".$pingintervalprobe.")")	
+    	}
+  	} else={ 
+	    :if ($pingprobefail->($w-1)<pingintervalprobe) do={
+	      	:set ($pingprobefail->($w-1)) ($pingprobefail->($w-1)+1)
+	      	:log info ("Wan$w Unstable (".($pingprobefail->($w-1))."/".$pingintervalprobe.")")
+	    }
+  	}
 }
 
 :if ($pingprobefaillast->0=nil) do={ :set pingprobefaillast {0;0;0;0;};}
 :for w from=1 to=$wan do={
   :if ($pingprobefaillast->($w-1)=1 && $pingprobefail->($w-1)=0) do={
     :log info ("Wan$w Up")
+    :set wstatuslist ("$wstatuslist".","."down")
 #start edit action wan   
   
 #end  edit action wan 
   }
   :if ($pingprobefaillast->($w-1)=($pingintervalprobe-1) && $pingprobefail->($w-1)=$pingintervalprobe) do={
     :log info ("Wan$w Down")
+    
 #start edit action wan   
   
 #end  edit action wan     
@@ -67,13 +71,17 @@
 }
 
 :for w from=1 to=$wan do={
-  :set ($pingprobefaillast->($w-1)) ($pingprobefail->($w-1))
-  :if (($pingprobefail->($w-1))=0) do={
-      :set wstatuslist ("$wstatuslist".","."up")
-    } else={
-      :set wstatuslist ("$wstatuslist".","."down")
+	:set ($pingprobefaillast->($w-1)) ($pingprobefail->($w-1))
+	:if (($pingprobefail->($w-1))=0) do={
+		:set wstatuslist ("$wstatuslist".","."up")
+	} else={
+    	:if (($pingprobefail->($w-1))=$pingintervalprobe) do={
+    		:set wstatuslist ("$wstatuslist".","."down")	
+    	} else={
+    		:set wstatuslist ("$wstatuslist".","."unstable")
+    	}
     }
-  :global wanstatus [:toarray $wstatuslist]
+  	:global wanstatus [:toarray $wstatuslist]
 }
 
 #===============script check wan end===============
